@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CV Keyword Checker</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', sans-serif;
+    background: #0f0f1a;
+    color: #e2e2f0;
+    min-height: 100vh;
+    padding: 30px 20px;
+  }
+
+  .container {
+    max-width: 860px;
+    margin: 0 auto;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 36px;
+  }
+
+  header h1 {
+    font-size: 2rem;
+    font-weight: 800;
+    background: linear-gradient(90deg, #a78bfa, #60a5fa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 8px;
+  }
+
+  header p {
+    color: #9090b0;
+    font-size: 0.95rem;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+  }
+
+  @media (max-width: 640px) {
+    .grid { grid-template-columns: 1fr; }
+    header h1 { font-size: 1.5rem; }
+  }
+
+  .card {
+    background: #1a1a2e;
+    border: 1px solid #2e2e4e;
+    border-radius: 14px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .card label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #a78bfa;
+    margin-bottom: 10px;
+  }
+
+  textarea {
+    flex: 1;
+    background: #12121f;
+    border: 1px solid #2e2e4e;
+    border-radius: 10px;
+    color: #e2e2f0;
+    font-size: 0.88rem;
+    line-height: 1.6;
+    padding: 14px;
+    resize: vertical;
+    min-height: 220px;
+    outline: none;
+    transition: border-color 0.2s;
+    font-family: inherit;
+  }
+
+  textarea:focus { border-color: #a78bfa; }
+  textarea::placeholder { color: #444466; }
+
+  .btn {
+    width: 100%;
+    padding: 15px;
+    border-radius: 12px;
+    border: none;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    background: linear-gradient(90deg, #7c3aed, #2563eb);
+    color: white;
+    letter-spacing: 0.03em;
+    transition: opacity 0.2s, transform 0.1s;
+    margin-bottom: 24px;
+  }
+
+  .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+  .btn:active { transform: translateY(0); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  /* Score ring */
+  .score-section {
+    display: none;
+    text-align: center;
+    margin-bottom: 28px;
+  }
+
+  .score-ring {
+    position: relative;
+    width: 130px;
+    height: 130px;
+    margin: 0 auto 12px;
+  }
+
+  .score-ring svg { transform: rotate(-90deg); }
+
+  .score-ring .track { fill: none; stroke: #2e2e4e; stroke-width: 10; }
+  .score-ring .fill  { fill: none; stroke-width: 10; stroke-linecap: round; transition: stroke-dashoffset 1s ease; }
+
+  .score-number {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .score-number span:first-child {
+    font-size: 2rem;
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  .score-number span:last-child {
+    font-size: 0.72rem;
+    color: #9090b0;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .score-label {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .score-sublabel { color: #9090b0; font-size: 0.85rem; }
+
+  /* Results cards */
+  .results { display: none; }
+
+  .result-block {
+    background: #1a1a2e;
+    border: 1px solid #2e2e4e;
+    border-radius: 14px;
+    padding: 20px 22px;
+    margin-bottom: 16px;
+  }
+
+  .result-block h3 {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 14px;
+  }
+
+  .tag-list { display: flex; flex-wrap: wrap; gap: 8px; }
+
+  .tag {
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.82rem;
+    font-weight: 600;
+  }
+
+  .tag.found    { background: #14532d; color: #86efac; border: 1px solid #166534; }
+  .tag.missing  { background: #450a0a; color: #fca5a5; border: 1px solid #7f1d1d; }
+
+  .tip-list { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+
+  .tip-list li {
+    display: flex;
+    gap: 10px;
+    font-size: 0.88rem;
+    line-height: 1.55;
+    color: #c8c8e8;
+  }
+
+  .tip-list li::before {
+    content: '→';
+    color: #a78bfa;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .loading {
+    display: none;
+    text-align: center;
+    padding: 30px;
+    color: #9090b0;
+    font-size: 0.9rem;
+  }
+
+  .loading .dot-anim::after {
+    content: '';
+    animation: dots 1.4s infinite;
+  }
+
+  @keyframes dots {
+    0%   { content: ''; }
+    33%  { content: '.'; }
+    66%  { content: '..'; }
+    100% { content: '...'; }
+  }
+
+  .spinner {
+    width: 36px; height: 36px;
+    border: 3px solid #2e2e4e;
+    border-top-color: #a78bfa;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 14px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .error-msg {
+    display: none;
+    background: #450a0a;
+    border: 1px solid #7f1d1d;
+    color: #fca5a5;
+    border-radius: 10px;
+    padding: 14px 18px;
+    font-size: 0.88rem;
+    margin-bottom: 16px;
+  }
+
+  /* Free checks badge */
+  .checks-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #1a1a2e;
+    border: 1px solid #2e2e4e;
+    border-radius: 20px;
+    padding: 5px 14px;
+    font-size: 0.8rem;
+    color: #9090b0;
+    margin-bottom: 16px;
+  }
+
+  .checks-badge span { color: #a78bfa; font-weight: 700; }
+
+  /* Paywall overlay */
+  .paywall {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(10,10,20,0.92);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  .paywall.show { display: flex; }
+
+  .paywall-box {
+    background: #1a1a2e;
+    border: 1px solid #3b3b6e;
+    border-radius: 20px;
+    padding: 40px 36px;
+    max-width: 420px;
+    width: 100%;
+    text-align: center;
+  }
+
+  .paywall-box .icon { font-size: 2.8rem; margin-bottom: 16px; }
+
+  .paywall-box h2 {
+    font-size: 1.5rem;
+    font-weight: 800;
+    margin-bottom: 10px;
+    background: linear-gradient(90deg, #a78bfa, #60a5fa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .paywall-box p {
+    color: #9090b0;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    margin-bottom: 24px;
+  }
+
+  .paywall-price {
+    font-size: 2.2rem;
+    font-weight: 800;
+    color: #e2e2f0;
+    margin-bottom: 4px;
+  }
+
+  .paywall-price sub {
+    font-size: 1rem;
+    font-weight: 400;
+    color: #9090b0;
+  }
+
+  .paywall-trial {
+    font-size: 0.78rem;
+    color: #4ade80;
+    margin-bottom: 24px;
+    font-weight: 600;
+  }
+
+  .paywall-perks {
+    list-style: none;
+    text-align: left;
+    margin-bottom: 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .paywall-perks li {
+    font-size: 0.87rem;
+    color: #c8c8e8;
+    display: flex;
+    gap: 8px;
+  }
+
+  .paywall-perks li::before { content: '✅'; flex-shrink: 0; }
+
+  .btn-pay {
+    width: 100%;
+    padding: 15px;
+    border-radius: 12px;
+    border: none;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    background: linear-gradient(90deg, #7c3aed, #2563eb);
+    color: white;
+    letter-spacing: 0.03em;
+    transition: opacity 0.2s, transform 0.1s;
+    text-decoration: none;
+    display: block;
+    margin-bottom: 12px;
+  }
+
+  .btn-pay:hover { opacity: 0.9; transform: translateY(-1px); }
+
+  .paywall-note {
+    font-size: 0.75rem;
+    color: #666688;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>CV Keyword Checker</h1>
+    <p>Paste your CV and a job description — AI will score your match and tell you exactly what to fix.</p>
+  </header>
+
+  <div class="grid">
+    <div class="card">
+      <label>📄 Your CV</label>
+      <textarea id="cv" placeholder="Paste your CV text here...&#10;&#10;Work experience, skills, education — the more detail the better."></textarea>
+    </div>
+    <div class="card">
+      <label>💼 Job Description</label>
+      <textarea id="job" placeholder="Paste the job posting here...&#10;&#10;Copy the full description from the job listing."></textarea>
+    </div>
+  </div>
+
+  <div style="text-align:center">
+    <div class="checks-badge" id="checksBadge">🎁 Free checks remaining: <span id="checksLeft">2</span></div>
+  </div>
+
+  <button class="btn" id="analyzeBtn" onclick="analyze()">🔍 Analyze My CV</button>
+
+  <div class="error-msg" id="errorMsg"></div>
+
+  <!-- Paywall -->
+  <div class="paywall" id="paywall">
+    <div class="paywall-box">
+      <div class="icon">🚀</div>
+      <h2>You've used your free checks</h2>
+      <p>Upgrade to CV Match Ultimate and get unlimited CV checks, keyword analysis, and AI tips — every day.</p>
+      <div class="paywall-price">€9.99 <sub>/month</sub></div>
+      <div class="paywall-trial">🎉 7-day free trial — cancel anytime</div>
+      <ul class="paywall-perks">
+        <li>Unlimited CV checks</li>
+        <li>Full keyword analysis</li>
+        <li>AI-powered improvement tips</li>
+        <li>Match score for every job</li>
+      </ul>
+      <a class="btn-pay" href="https://cvmatchultimate.lemonsqueezy.com/checkout/buy/6cf9cc59-3988-40f4-b4cd-df5e96ba993a" target="_blank">
+        Start Free Trial →
+      </a>
+      <div class="paywall-note">No charge for 7 days. Cancel anytime.</div>
+    </div>
+  </div>
+
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <div>Analyzing your CV<span class="dot-anim"></span></div>
+  </div>
+
+  <div class="score-section" id="scoreSection">
+    <div class="score-ring">
+      <svg viewBox="0 0 100 100" width="130" height="130">
+        <circle class="track" cx="50" cy="50" r="42"/>
+        <circle class="fill" id="scoreFill" cx="50" cy="50" r="42"
+          stroke-dasharray="263.9"
+          stroke-dashoffset="263.9"/>
+      </svg>
+      <div class="score-number">
+        <span id="scoreNum">0</span>
+        <span>/ 100</span>
+      </div>
+    </div>
+    <div class="score-label" id="scoreLabel">—</div>
+    <div class="score-sublabel" id="scoreSublabel"></div>
+  </div>
+
+  <div class="results" id="results">
+    <div class="result-block">
+      <h3 style="color:#86efac">✅ Keywords Found in Your CV</h3>
+      <div class="tag-list" id="foundTags"></div>
+    </div>
+    <div class="result-block">
+      <h3 style="color:#fca5a5">❌ Missing Keywords</h3>
+      <div class="tag-list" id="missingTags"></div>
+    </div>
+    <div class="result-block">
+      <h3 style="color:#a78bfa">💡 Tips to Improve Your CV</h3>
+      <ul class="tip-list" id="tipsList"></ul>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // Free check counter (resets each browser session)
+  const MAX_FREE = 2;
+  let checksUsed = parseInt(sessionStorage.getItem('checksUsed') || '0');
+
+  function updateBadge() {
+    const left = Math.max(0, MAX_FREE - checksUsed);
+    document.getElementById('checksLeft').textContent = left;
+    if (left === 0) {
+      document.getElementById('checksBadge').style.background = '#450a0a';
+      document.getElementById('checksBadge').style.borderColor = '#7f1d1d';
+      document.getElementById('checksBadge').style.color = '#fca5a5';
+    }
+  }
+
+  updateBadge();
+
+async function analyze() {
+  // Paywall check
+  if (checksUsed >= MAX_FREE) {
+    document.getElementById('paywall').classList.add('show');
+    return;
+  }
+
+  const cv = document.getElementById('cv').value.trim();
+  const job = document.getElementById('job').value.trim();
+  const btn = document.getElementById('analyzeBtn');
+  const loading = document.getElementById('loading');
+  const errorMsg = document.getElementById('errorMsg');
+
+  errorMsg.style.display = 'none';
+  document.getElementById('scoreSection').style.display = 'none';
+  document.getElementById('results').style.display = 'none';
+
+  if (!cv || !job) {
+    showError('Please paste both your CV and the job description before analyzing.');
+    return;
+  }
+
+  // Count this check
+  checksUsed++;
+  sessionStorage.setItem('checksUsed', checksUsed);
+  updateBadge();
+
+  btn.disabled = true;
+  loading.style.display = 'block';
+
+  const prompt = `You are a professional CV/resume analyzer. Analyze the following CV against the job description.
+
+CV:
+"""
+${cv}
+"""
+
+Job Description:
+"""
+${job}
+"""
+
+Respond ONLY with a valid JSON object (no markdown, no backticks, no extra text) in this exact format:
+{
+  "score": <number 0-100>,
+  "scoreLabel": "<one of: Weak Match / Fair Match / Good Match / Strong Match / Excellent Match>",
+  "scoreSublabel": "<one short sentence explaining the score>",
+  "foundKeywords": ["keyword1", "keyword2", ...],
+  "missingKeywords": ["keyword1", "keyword2", ...],
+  "tips": ["tip1", "tip2", "tip3", "tip4", "tip5"]
+}
+
+Rules:
+- foundKeywords: important keywords/skills from the job description that ARE present in the CV (max 12)
+- missingKeywords: important keywords/skills from the job description that are NOT in the CV (max 12)
+- tips: 5 specific, actionable tips to improve this CV for this job
+- score: honest match score based on skills, experience, keywords overlap`;
+
+  try {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1000,
+        messages: [{ role: "user", content: prompt }]
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error?.message || 'API error');
+    }
+
+    const text = data.content.map(b => b.text || '').join('');
+    const clean = text.replace(/```json|```/g, '').trim();
+    const result = JSON.parse(clean);
+
+    loading.style.display = 'none';
+    btn.disabled = false;
+
+    renderResults(result);
+
+  } catch (err) {
+    loading.style.display = 'none';
+    btn.disabled = false;
+    showError('Something went wrong: ' + err.message);
+  }
+}
+
+function renderResults(r) {
+  // Score ring
+  const score = Math.min(100, Math.max(0, r.score));
+  const circumference = 263.9;
+  const offset = circumference - (score / 100) * circumference;
+  const fill = document.getElementById('scoreFill');
+
+  const color = score >= 75 ? '#4ade80' : score >= 50 ? '#facc15' : '#f87171';
+  fill.style.stroke = color;
+
+  document.getElementById('scoreSection').style.display = 'block';
+
+  setTimeout(() => { fill.style.strokeDashoffset = offset; }, 50);
+
+  // Animate number
+  let current = 0;
+  const step = score / 40;
+  const numEl = document.getElementById('scoreNum');
+  const timer = setInterval(() => {
+    current = Math.min(current + step, score);
+    numEl.textContent = Math.round(current);
+    numEl.style.color = color;
+    if (current >= score) clearInterval(timer);
+  }, 25);
+
+  document.getElementById('scoreLabel').textContent = r.scoreLabel || '';
+  document.getElementById('scoreLabel').style.color = color;
+  document.getElementById('scoreSublabel').textContent = r.scoreSublabel || '';
+
+  // Keywords
+  const foundEl = document.getElementById('foundTags');
+  const missingEl = document.getElementById('missingTags');
+  foundEl.innerHTML = '';
+  missingEl.innerHTML = '';
+
+  (r.foundKeywords || []).forEach(k => {
+    const t = document.createElement('span');
+    t.className = 'tag found';
+    t.textContent = k;
+    foundEl.appendChild(t);
+  });
+
+  (r.missingKeywords || []).forEach(k => {
+    const t = document.createElement('span');
+    t.className = 'tag missing';
+    t.textContent = k;
+    missingEl.appendChild(t);
+  });
+
+  // Tips
+  const tipsEl = document.getElementById('tipsList');
+  tipsEl.innerHTML = '';
+  (r.tips || []).forEach(tip => {
+    const li = document.createElement('li');
+    li.textContent = tip;
+    tipsEl.appendChild(li);
+  });
+
+  document.getElementById('results').style.display = 'block';
+}
+
+function showError(msg) {
+  const el = document.getElementById('errorMsg');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+</script>
+</body>
+</html>
